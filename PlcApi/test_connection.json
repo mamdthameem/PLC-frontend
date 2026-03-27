@@ -1,0 +1,14 @@
+{
+  "instructions": "Password authentication failed. Please follow these steps:",
+  "step1": "Test your PostgreSQL password manually:",
+  "command1": "psql -U postgres -d plc_data",
+  "step2": "If password is wrong, update it:",
+  "sql": "ALTER USER postgres WITH PASSWORD 'sridhar@2006';",
+  "step3": "Or update the connection string in appsettings.json with the correct password",
+  "alternative_formats": [
+    "Host=localhost;Port=5432;Database=plc_datas;Username=postgres;Password=sridhar@2006",
+    "Host=localhost;Port=5432;Database=plc_datas;Username=postgres;Password=\"sridhar@2006\"",
+    "Host=localhost;Port=5432;Database=plc_datas;Username=postgres;Password=sridhar%402006"
+  ]
+}
+
