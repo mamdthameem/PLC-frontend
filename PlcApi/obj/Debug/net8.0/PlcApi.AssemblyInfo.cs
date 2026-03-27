@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PlcApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e9bbc3b3aca841ea236e449e0554f6bb7e1c4d3")]
 [assembly: System.Reflection.AssemblyProductAttribute("PlcApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PlcApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

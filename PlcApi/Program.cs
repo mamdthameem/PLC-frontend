@@ -65,6 +65,45 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Ensure master auth tables exist + default users
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
+    db.Database.EnsureCreated();
+
+    if (!db.Users.Any())
+    {
+        db.Users.AddRange(
+            new User
+            {
+                Username = "admin",
+                Email = "admin@plc.local",
+                FullName = "System Admin",
+                PasswordHash = PasswordHasher.Hash("admin123"),
+                Role = "admin",
+                TenantId = "all",
+                SubscriptionStatus = "active",
+                IsApproved = true,
+                CreatedAtUtc = DateTime.UtcNow
+            },
+            new User
+            {
+                Username = "user1",
+                Email = "user1@plc.local",
+                FullName = "Default User",
+                PasswordHash = PasswordHasher.Hash("user123"),
+                Role = "user",
+                TenantId = "customer-1",
+                SubscriptionStatus = "active",
+                IsApproved = true,
+                ValidUntilUtc = DateTime.UtcNow.AddDays(30),
+                CreatedAtUtc = DateTime.UtcNow
+            }
+        );
+        db.SaveChanges();
+    }
+}
+
 // --- Database Connection Test (Non-blocking) ---
 _ = Task.Run(async () =>
 {

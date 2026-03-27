@@ -3059,16 +3059,16 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\RAHUL\\.nuget\\packages\\": {}
+    "C:\\Users\\RAHUL\\AppData\\Local\\Temp\\cursor-sandbox-cache\\423808345ec85daf18cae929aa356868\\nuget": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\PLCGateway\\PLCGateway\\PLCGateway\\PlcApi\\PlcApi.csproj",
+      "projectUniqueName": "e:\\PLCGateway\\PLCGateway\\PLCGateway\\PlcApi\\PlcApi.csproj",
       "projectName": "PlcApi",
-      "projectPath": "E:\\PLCGateway\\PLCGateway\\PLCGateway\\PlcApi\\PlcApi.csproj",
-      "packagesPath": "C:\\Users\\RAHUL\\.nuget\\packages\\",
-      "outputPath": "E:\\PLCGateway\\PLCGateway\\PLCGateway\\PlcApi\\obj\\",
+      "projectPath": "e:\\PLCGateway\\PLCGateway\\PLCGateway\\PlcApi\\PlcApi.csproj",
+      "packagesPath": "C:\\Users\\RAHUL\\AppData\\Local\\Temp\\cursor-sandbox-cache\\423808345ec85daf18cae929aa356868\\nuget",
+      "outputPath": "e:\\PLCGateway\\PLCGateway\\PLCGateway\\PlcApi\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\RAHUL\\AppData\\Roaming\\NuGet\\NuGet.Config"
