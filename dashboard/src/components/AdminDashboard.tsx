@@ -58,11 +58,7 @@ export const AdminDashboard: React.FC = () => {
 
     signalRService.subscribe(handleUpdate);
 
-    // Polling as fallback
-    const interval = setInterval(loadData, 10000);
-
     return () => {
-      clearInterval(interval);
       signalRService.unsubscribe(handleUpdate);
     };
   }, [selectedCustomer, searchTerm]);

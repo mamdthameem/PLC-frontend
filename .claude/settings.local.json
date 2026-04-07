@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(cs|md|sql|ps1|json|tsx|ts\\)$|^d\")",
+      "Bash(find:*)",
+      "Bash(ls D:/PLC-frontend/*.sql D:/PLC-frontend/*.ps1 D:/PLC-frontend/*.conf)",
+      "Bash(ls D:/PLC-frontend/dashboard/src/components/*.tsx)",
+      "Bash(ls -la D:/PLC-frontend/dashboard/.env*)",
+      "Bash(grep -v \"^bin$\\\\|^obj$\\\\|^PlcApi$\\\\|^dashboard$\\\\|^.git$\")"
+    ]
+  }
+}

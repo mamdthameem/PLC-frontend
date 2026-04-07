@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -26,6 +26,7 @@ import FunctionsIcon from '@mui/icons-material/Functions';
 import { apiService } from '../services/apiService';
 import { useUI } from '../contexts/UIContext';
 import { signalRService } from '../services/signalRService';
+import * as signalR from '@microsoft/signalr';
 
 type TableType = 'plc_values' | 'calculated_metrics';
 
@@ -36,87 +37,93 @@ export const DatabaseViewer: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isLive, setIsLive] = useState(false);
-    const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+    const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
 
-    const checkHealth = async () => {
-        try {
-            const health = await apiService.healthCheck();
-            setDbStatus(health.database === 'connected' ? 'connected' : 'disconnected');
-        } catch (err) {
-            setDbStatus('disconnected');
-        }
-    };
+    // ── plc_values: driven entirely by SignalR ────────────────────────────────
+    useEffect(() => {
+        if (activeTable !== 'plc_values') return;
 
-    const fetchData = async () => {
         setLoading(true);
         setError(null);
-        await checkHealth();
-        try {
-            if (activeTable === 'plc_values') {
-                const response = await apiService.getLatestValues();
-                setData(response.values);
+        setIsLive(false);
+
+        signalRService.start();
+
+        const handleValues = (values: any[]) => {
+            setData(values);
+            setIsLive(true);
+            setLoading(false);
+            setDbStatus('connected');
+        };
+
+        const handleConnectionChange = (state: signalR.HubConnectionState) => {
+            if (state === signalR.HubConnectionState.Connected) {
+                setDbStatus('connected');
+            } else if (
+                state === signalR.HubConnectionState.Reconnecting ||
+                state === signalR.HubConnectionState.Connecting
+            ) {
+                setDbStatus('connecting');
             } else {
-                const response = await apiService.getCalculatedMetrics();
-                setData(response);
+                setDbStatus('disconnected');
+                setIsLive(false);
             }
+        };
+
+        signalRService.subscribe(handleValues);
+        signalRService.onConnectionChange(handleConnectionChange);
+
+        // Reflect current connection state immediately
+        const currentState = signalRService.getConnectionState();
+        handleConnectionChange(currentState);
+
+        return () => {
+            signalRService.unsubscribe(handleValues);
+            signalRService.offConnectionChange(handleConnectionChange);
+        };
+    }, [activeTable]);
+
+    // ── calculated_metrics: fetched via REST on tab switch + manual refresh ───
+    const fetchCalculatedMetrics = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await apiService.getCalculatedMetrics();
+            setData(response);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch data');
-            console.error('Error fetching data:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch calculated metrics');
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        fetchData();
-
-        if (activeTable === 'plc_values') {
-            // Start SignalR for live updates only for plc_values
-            signalRService.start();
-
-            const handleUpdate = (values: any[]) => {
-                setData(values);
-                setIsLive(true);
-                setLoading(false);
-            };
-
-            signalRService.subscribe(handleUpdate);
-            return () => signalRService.unsubscribe(handleUpdate);
-        }
-    }, [activeTable]);
-
-    useEffect(() => {
-        const healthInterval = setInterval(checkHealth, 5000);
-        return () => clearInterval(healthInterval);
     }, []);
 
-    // Auto-refresh interval
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (!isLive || activeTable !== 'plc_values') {
-                fetchData();
-            }
-        }, 10000);
-        return () => clearInterval(interval);
-    }, [activeTable, isLive]);
+        if (activeTable !== 'calculated_metrics') return;
+        setIsLive(false);
+        fetchCalculatedMetrics();
+    }, [activeTable]);
 
     const handleTableChange = (
         _event: React.MouseEvent<HTMLElement>,
         newTable: TableType | null,
     ) => {
         if (newTable !== null) {
+            setData([]);
             setActiveTable(newTable);
-            setIsLive(false);
         }
     };
 
-    // Format column names
-    const formatName = (name: string) => {
-        return name
-            .split(/[_-]/)
+    const handleRefresh = () => {
+        if (activeTable === 'calculated_metrics') {
+            fetchCalculatedMetrics();
+        }
+        // For plc_values: next SignalR push arrives within 2s automatically
+    };
+
+    const formatName = (name: string) =>
+        name.split(/[_-]/)
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
-    };
 
     const getColumns = () => {
         if (data.length === 0) return [];
@@ -131,26 +138,28 @@ export const DatabaseViewer: React.FC = () => {
         );
     });
 
-    const getValueColor = (value: any) => {
+    const getValueColor = (value: any): 'success' | 'default' | 'primary' => {
         const str = String(value).toUpperCase();
         if (str === 'TRUE' || str === '1' || str === 'RUNNING' || str === 'ACTIVE') return 'success';
-        if (str === 'FALSE' || str === '0' || str === 'STOPPED' || str === 'INACTIVE') return 'default';
         if (!isNaN(Number(str))) return 'primary';
         return 'default';
     };
 
+    const statusColor = dbStatus === 'connected' ? 'success' : dbStatus === 'disconnected' ? 'error' : 'default';
+    const statusLabel = dbStatus === 'connected' ? 'DB CONNECTED' : dbStatus === 'disconnected' ? 'DB DISCONNECTED' : 'CONNECTING...';
+
     return (
-        <Container maxWidth="xl" sx={{ py: 4, transition: 'all 0.3s ease' }}>
+        <Container maxWidth="xl" sx={{ py: 4 }}>
             {/* Header */}
             <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={4}>
                 <Box display="flex" alignItems="center" gap={2}>
                     <StorageIcon sx={{ fontSize: 40, color: (theme) => theme.palette.primary.main }} />
                     <Box>
-                        <Typography variant="h3" fontWeight={700} sx={{ color: (theme) => theme.palette.text.primary, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="h3" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             Database Explorer
                             <Chip
-                                label={dbStatus === 'connected' ? 'DB CONNECTED' : dbStatus === 'disconnected' ? 'DB DISCONNECTED' : 'CHECKING DB...'}
-                                color={dbStatus === 'connected' ? 'success' : dbStatus === 'disconnected' ? 'error' : 'default'}
+                                label={statusLabel}
+                                color={statusColor}
                                 size="small"
                                 variant="filled"
                                 sx={{ fontWeight: 800, fontSize: '0.7rem', height: 20 }}
@@ -158,83 +167,76 @@ export const DatabaseViewer: React.FC = () => {
                         </Typography>
                         <Typography variant="body1" color="text.secondary">
                             {activeTable === 'plc_values'
-                                ? 'Real-time PLC parameters from PostgreSQL'
-                                : 'Advanced calculated metrics and performance data'}
+                                ? 'Real-time PLC parameters via SignalR'
+                                : 'Calculated metrics and performance data'}
                         </Typography>
                     </Box>
                 </Box>
+
                 <Box display="flex" flexDirection="column" alignItems="flex-end" gap={2}>
                     <ToggleButtonGroup
                         value={activeTable}
                         exclusive
                         onChange={handleTableChange}
-                        aria-label="database table"
                         size="small"
-                        sx={{
-                            backgroundColor: (theme) => theme.palette.background.paper,
-                            '& .MuiToggleButton-root': {
-                                px: 2,
-                                fontWeight: 600,
-                                textTransform: 'none'
-                            }
-                        }}
+                        sx={{ backgroundColor: (theme) => theme.palette.background.paper }}
                     >
-                        <ToggleButton value="plc_values" aria-label="plc values">
+                        <ToggleButton value="plc_values">
                             <StorageIcon sx={{ mr: 1, fontSize: 18 }} />
                             PLC Values
                         </ToggleButton>
-                        <ToggleButton value="calculated_metrics" aria-label="calculated metrics">
+                        <ToggleButton value="calculated_metrics">
                             <FunctionsIcon sx={{ mr: 1, fontSize: 18 }} />
                             Calculated Data
                         </ToggleButton>
                     </ToggleButtonGroup>
+
                     <Box display="flex" alignItems="center" gap={1}>
                         {activeTable === 'plc_values' && isLive && (
                             <Chip
                                 icon={<TrendingUpIcon />}
-                                label="LIVE UPDATES"
+                                label="LIVE · SignalR"
                                 color="success"
                                 size="small"
                                 variant="outlined"
                                 sx={{ fontWeight: 800, fontSize: '0.65rem' }}
                             />
                         )}
-                        <Tooltip title="Refresh data">
-                            <IconButton onClick={fetchData} color="primary" disabled={loading} size="small">
-                                <RefreshIcon />
-                            </IconButton>
+                        <Tooltip title={activeTable === 'plc_values' ? 'Auto-updates every 2s via SignalR' : 'Refresh'}>
+                            <span>
+                                <IconButton
+                                    onClick={handleRefresh}
+                                    color="primary"
+                                    disabled={loading || activeTable === 'plc_values'}
+                                    size="small"
+                                >
+                                    <RefreshIcon />
+                                </IconButton>
+                            </span>
                         </Tooltip>
                     </Box>
                 </Box>
             </Box>
 
-            {/* Error Alert */}
             {error && (
-                <Alert
-                    severity="error"
-                    sx={{ mb: 3, borderRadius: 2 }}
-                    onClose={() => setError(null)}
-                >
+                <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} onClose={() => setError(null)}>
                     {error}
                 </Alert>
             )}
 
-            {/* Loading/Data State */}
             {loading && data.length === 0 ? (
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+                <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight={400} gap={2}>
                     <CircularProgress size={60} thickness={4} />
+                    {activeTable === 'plc_values' && (
+                        <Typography variant="body2" color="text.secondary">
+                            Waiting for SignalR push...
+                        </Typography>
+                    )}
                 </Box>
             ) : data.length > 0 ? (
                 <TableContainer
                     component={Paper}
-                    sx={{
-                        borderRadius: 3,
-                        boxShadow: (theme) => theme.palette.mode === 'dark'
-                            ? '0 4px 20px rgba(0,0,0,0.4)'
-                            : '0 4px 20px rgba(0,0,0,0.05)',
-                        transition: 'all 0.3s ease',
-                        overflow: 'hidden'
-                    }}
+                    sx={{ borderRadius: 3, overflow: 'hidden' }}
                 >
                     <Table stickyHeader>
                         <TableHead>
@@ -248,7 +250,7 @@ export const DatabaseViewer: React.FC = () => {
                                             textTransform: 'uppercase',
                                             fontSize: '0.75rem',
                                             letterSpacing: '0.05em',
-                                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5'
+                                            backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1e1e1e' : '#f5f5f5',
                                         }}
                                     >
                                         {formatName(col)}
@@ -260,19 +262,10 @@ export const DatabaseViewer: React.FC = () => {
                             {filteredData.map((row, index) => (
                                 <TableRow
                                     key={index}
-                                    sx={{
-                                        '&:hover': {
-                                            backgroundColor: (theme) => theme.palette.mode === 'dark'
-                                                ? 'rgba(255, 255, 255, 0.03)'
-                                                : 'rgba(0, 0, 0, 0.01)',
-                                        },
-                                        transition: 'background-color 0.2s ease',
-                                    }}
+                                    sx={{ '&:hover': { backgroundColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)' } }}
                                 >
                                     <TableCell>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {index + 1}
-                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">{index + 1}</Typography>
                                     </TableCell>
                                     {getColumns().map((col) => (
                                         <TableCell key={col}>
@@ -285,7 +278,7 @@ export const DatabaseViewer: React.FC = () => {
                                                     label={row[col]}
                                                     color={getValueColor(row[col])}
                                                     size="small"
-                                                    variant={isNaN(Number(row[col])) ? "filled" : "outlined"}
+                                                    variant={isNaN(Number(row[col])) ? 'filled' : 'outlined'}
                                                     sx={{ fontWeight: 600, minWidth: 60 }}
                                                 />
                                             ) : (
@@ -301,7 +294,6 @@ export const DatabaseViewer: React.FC = () => {
                     </Table>
                 </TableContainer>
             ) : (
-                /* Empty State */
                 <Paper
                     sx={{
                         p: 8,
@@ -310,27 +302,21 @@ export const DatabaseViewer: React.FC = () => {
                         border: '2px dashed',
                         borderColor: 'divider',
                         backgroundColor: 'transparent',
-                        transition: 'all 0.3s ease',
                     }}
                 >
-                    <Box sx={{ opacity: 0.5 }}>
-                        <StorageIcon sx={{ fontSize: 80, mb: 2 }} />
-                        <Typography variant="h5" fontWeight={700} gutterBottom>
-                            No Data Found
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" mb={4} maxWidth={500} mx="auto">
-                            We couldn't find any records in the <strong>{activeTable}</strong> table.
-                            If the database team just connected, please wait a moment or try refreshing.
-                        </Typography>
-                    </Box>
-                    <Button
-                        variant="contained"
-                        onClick={fetchData}
-                        startIcon={<RefreshIcon />}
-                        sx={{ borderRadius: 2, px: 4 }}
-                    >
-                        Check Again
-                    </Button>
+                    <StorageIcon sx={{ fontSize: 80, mb: 2, opacity: 0.3 }} />
+                    <Typography variant="h5" fontWeight={700} gutterBottom>No Data Found</Typography>
+                    <Typography variant="body1" color="text.secondary" mb={4} maxWidth={500} mx="auto">
+                        No records in <strong>{activeTable}</strong>.
+                        {activeTable === 'plc_values'
+                            ? ' Waiting for the PLC Gateway to write data into the database.'
+                            : ' The calculated_metrics table may not exist yet.'}
+                    </Typography>
+                    {activeTable === 'calculated_metrics' && (
+                        <Button variant="contained" onClick={handleRefresh} startIcon={<RefreshIcon />} sx={{ borderRadius: 2, px: 4 }}>
+                            Check Again
+                        </Button>
+                    )}
                 </Paper>
             )}
         </Container>
