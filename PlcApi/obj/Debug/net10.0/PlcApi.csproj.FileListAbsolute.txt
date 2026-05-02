@@ -32,9 +32,6 @@ D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Microsoft.OpenApi.dll
 D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Mono.TextTemplating.dll
 D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Npgsql.dll
 D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
-D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
-D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
-D:\PLC-frontend\PlcApi\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 D:\PLC-frontend\PlcApi\bin\Debug\net10.0\System.CodeDom.dll
 D:\PLC-frontend\PlcApi\bin\Debug\net10.0\System.Composition.AttributedModel.dll
 D:\PLC-frontend\PlcApi\bin\Debug\net10.0\System.Composition.Convention.dll

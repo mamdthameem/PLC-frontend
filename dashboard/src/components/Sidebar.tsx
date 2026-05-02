@@ -3,7 +3,6 @@ import { Avatar, Tooltip } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import StorageIcon from '@mui/icons-material/Storage';
 import PeopleIcon from '@mui/icons-material/People';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,15 +46,9 @@ const SidebarInner: React.FC = () => {
       onClick: (e) => {
         if (location.pathname === '/dashboard') {
           e.preventDefault();
-          window.dispatchEvent(new CustomEvent('dashboard-reset'));
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
-    },
-    {
-      label: 'Database',
-      to: '/database',
-      icon: <StorageIcon sx={{ fontSize: 20 }} />,
     },
   ];
 

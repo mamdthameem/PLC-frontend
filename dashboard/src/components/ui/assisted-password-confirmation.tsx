@@ -104,12 +104,11 @@ export function AssistedPasswordConfirmation({
                 height: '100%',
                 background: charBg(i),
                 flexShrink: 0,
+                transformOrigin: 'left center',
               }}
               animate={{ scaleX: confirmPassword[i] ? 1 : 0 }}
               initial={{ scaleX: 0 }}
               transition={{ duration: 0.18 }}
-              // origin left so it expands from the left
-              transformOrigin="left center"
             />
           ))}
         </div>

@@ -1,20 +1,16 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider as MuiThemeProvider, CssBaseline, Box } from '@mui/material';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { UIProvider, useUI } from './contexts/UIContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './components/Login';
-import { AdminDashboard } from './components/AdminDashboard';
-import { UserDashboard } from './components/UserDashboard';
+import { MachineDashboard } from './components/MachineDashboard';
 import { UserManagement } from './components/UserManagement';
-import { DatabaseViewer } from './components/DatabaseViewer';
-import { MachineDetailRoute } from './components/MachineDetailRoute';
 import { Sidebar, TopBar } from './components';
 
-// Main Layout Component with Sidebar
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { theme } = useTheme();
   const { sidebarOpen } = useUI();
@@ -24,7 +20,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <Box
         sx={{
           flexGrow: 1,
-          // 64px = collapsed icon-only sidebar width; 0 when sidebar is fully hidden
           ml: sidebarOpen ? '64px' : 0,
           display: 'flex',
           flexDirection: 'column',
@@ -40,34 +35,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   );
 };
 
-// Dashboard Router (handles role-based routing)
-const DashboardRouter: React.FC = () => {
-  const { user, isAdmin } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Route based on role
-  if (isAdmin) {
-    return <AdminDashboard />;
-  } else {
-    return <UserDashboard />;
-  }
-};
-
-function App() {
-  return (
-    <ThemeProvider>
-      <ThemeWrapper />
-    </ThemeProvider>
-  );
-}
-
-// Wrapper component to access theme from context
 const ThemeWrapper: React.FC = () => {
   const { theme } = useTheme();
-
   return (
     <MuiThemeProvider theme={theme}>
       <CssBaseline />
@@ -82,17 +51,7 @@ const ThemeWrapper: React.FC = () => {
                   element={
                     <ProtectedRoute>
                       <Layout>
-                        <DashboardRouter />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard/machine/:machineId"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <MachineDetailRoute />
+                        <MachineDashboard />
                       </Layout>
                     </ProtectedRoute>
                   }
@@ -107,16 +66,6 @@ const ThemeWrapper: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/database"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <DatabaseViewer />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
@@ -127,5 +76,13 @@ const ThemeWrapper: React.FC = () => {
     </MuiThemeProvider>
   );
 };
+
+function App() {
+  return (
+    <ThemeProvider>
+      <ThemeWrapper />
+    </ThemeProvider>
+  );
+}
 
 export default App;

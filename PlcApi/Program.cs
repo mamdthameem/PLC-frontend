@@ -3,32 +3,18 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using PlcApi.Services;
-using PlcApi.Hubs;
 using PlcApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-// Register Master Database Context
+// Auth database (users table only)
 builder.Services.AddDbContext<MasterDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresDb")));
 
-// Register Multi-Tenancy Services
-builder.Services.AddScoped<TenantContext>();
-builder.Services.AddScoped<ITenantConnectionFactory, TenantConnectionFactory>();
-
-// Register SignalR
-builder.Services.AddSignalR();
-
-// Register database service
-builder.Services.AddSingleton<IDbConnectionState, DbConnectionState>();
-builder.Services.AddScoped<IPlcDataService, PlcDataService>();
-
-// Configure JWT Authentication
+// JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "YourSuperSecretKeyWithAtLeast32Chars!!";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -45,27 +31,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Register background worker for real-time updates
-builder.Services.AddHostedService<PlcDataWorker>();
+// Data services — thin DB proxy, no business logic
+builder.Services.AddScoped<ILifetimeService, LifetimeService>();
+builder.Services.AddScoped<IFilterService, FilterService>();
 
-// Configure CORS
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-    ?? new[] { "http://localhost:5173", "http://localhost:5174" };
+// CORS
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:5173" };
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-    {
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
-    });
+              .AllowCredentials());
 });
 
 var app = builder.Build();
 
-// Ensure master auth tables exist + default users
+// Seed default users on first run
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MasterDbContext>();
@@ -104,82 +89,22 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// --- Database Connection Test (Non-blocking) ---
-_ = Task.Run(async () =>
-{
-    // Wait a bit for app to fully initialize
-    await Task.Delay(2000);
-    
-    using (var scope = app.Services.CreateScope())
-    {
-        var plcDataService = scope.ServiceProvider.GetRequiredService<IPlcDataService>();
-        var connectionState = scope.ServiceProvider.GetRequiredService<IDbConnectionState>();
-        int maxRetries = 3;
-        int delayMs = 1000;
-
-        Console.WriteLine("🔍 Checking database connection in background...");
-
-        for (int i = 1; i <= maxRetries; i++)
-        {
-            try
-            {
-                if (await plcDataService.CheckConnectionAsync())
-                {
-                    Console.WriteLine("✅ PostgreSQL connected over LAN!");
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠️ Database connection attempt {i} failed: {ex.Message}");
-            }
-
-            if (i < maxRetries)
-            {
-                await Task.Delay(delayMs);
-            }
-        }
-
-        if (!connectionState.HasEverConnected)
-        {
-            Console.WriteLine("⚠️ Database connection not available. Using mock data fallback.");
-            Console.WriteLine("⚠️ API will continue to work - database connection will be retried in background.");
-        }
-    }
-});
-// --------------------------------
-
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
 app.UseCors("AllowFrontend");
-
-app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Custom Multi-Tenancy Middleware
-app.UseMiddleware<PlcApi.Middleware.TenantMiddleware>();
-
 app.MapControllers();
-app.MapHub<PlcHub>("/plchub");
 
-// Root endpoint
-app.MapGet("/", () => new { 
-    message = "PLC Gateway API", 
-    version = "1.0.0",
-    endpoints = new[] 
+app.MapGet("/", () => new
+{
+    message = "PLC Gateway API",
+    version = "2.0.0",
+    endpoints = new[]
     {
-        "/api/plc/latest",
-        "/api/plc/timeseries/{address}",
-        "/api/plc/values",
-        "/api/plc/addresses",
-        "/api/plc/health"
+        "POST /api/auth/login",
+        "GET  /api/lifetime",
+        "POST /api/filter",
+        "GET  /api/filter/{id}/status",
+        "GET  /api/filter/{id}/results"
     }
 });
 

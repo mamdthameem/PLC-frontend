@@ -35,7 +35,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           type: 'expiry',
           title: 'User access expiring',
           message: `${u.name || u.email} expires ${dayText} (${formatDate(u.validUntil)})`,
-          severity: d <= 1 ? 'warning' : 'info',
+          severity: (d ?? 99) <= 1 ? 'warning' : 'info',
           createdAt: new Date(),
         });
       });

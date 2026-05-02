@@ -13,7 +13,6 @@
           "Microsoft.EntityFrameworkCore.Design": "9.0.4",
           "Npgsql": "9.0.3",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "9.0.4",
-          "Swashbuckle.AspNetCore": "8.1.1",
           "System.IdentityModel.Tokens.Jwt": "8.15.0"
         },
         "runtime": {
@@ -494,43 +493,6 @@
           }
         }
       },
-      "Swashbuckle.AspNetCore/8.1.1": {
-        "dependencies": {
-          "Swashbuckle.AspNetCore.Swagger": "8.1.1",
-          "Swashbuckle.AspNetCore.SwaggerGen": "8.1.1",
-          "Swashbuckle.AspNetCore.SwaggerUI": "8.1.1"
-        }
-      },
-      "Swashbuckle.AspNetCore.Swagger/8.1.1": {
-        "dependencies": {
-          "Microsoft.OpenApi": "2.0.0"
-        },
-        "runtime": {
-          "lib/net9.0/Swashbuckle.AspNetCore.Swagger.dll": {
-            "assemblyVersion": "8.1.1.0",
-            "fileVersion": "8.1.1.1274"
-          }
-        }
-      },
-      "Swashbuckle.AspNetCore.SwaggerGen/8.1.1": {
-        "dependencies": {
-          "Swashbuckle.AspNetCore.Swagger": "8.1.1"
-        },
-        "runtime": {
-          "lib/net9.0/Swashbuckle.AspNetCore.SwaggerGen.dll": {
-            "assemblyVersion": "8.1.1.0",
-            "fileVersion": "8.1.1.1274"
-          }
-        }
-      },
-      "Swashbuckle.AspNetCore.SwaggerUI/8.1.1": {
-        "runtime": {
-          "lib/net9.0/Swashbuckle.AspNetCore.SwaggerUI.dll": {
-            "assemblyVersion": "8.1.1.0",
-            "fileVersion": "8.1.1.1274"
-          }
-        }
-      },
       "System.CodeDom/6.0.0": {
         "runtime": {
           "lib/net6.0/System.CodeDom.dll": {
@@ -793,34 +755,6 @@
       "sha512": "sha512-mw5vcY2IEc7L+IeGrxpp/J5OSnCcjkjAgJYCm/eD52wpZze8zsSifdqV7zXslSMmfJG2iIUGZyo3KuDtEFKwMQ==",
       "path": "npgsql.entityframeworkcore.postgresql/9.0.4",
       "hashPath": "npgsql.entityframeworkcore.postgresql.9.0.4.nupkg.sha512"
-    },
-    "Swashbuckle.AspNetCore/8.1.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-HJHexmU0PiYevgTLvKjYkxEtclF2w4O7iTd3Ef3p6KeT0kcYLpkFVgCw6glpGS57h8769anv8G+NFi9Kge+/yw==",
-      "path": "swashbuckle.aspnetcore/8.1.1",
-      "hashPath": "swashbuckle.aspnetcore.8.1.1.nupkg.sha512"
-    },
-    "Swashbuckle.AspNetCore.Swagger/8.1.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-h+8D5jQtnl6X4f2hJQwf0Khj0SnCQANzirCELjXJ6quJ4C1aNNCvJrAsQ+4fOKAMqJkvW48cKj79ftG+YoGcRg==",
-      "path": "swashbuckle.aspnetcore.swagger/8.1.1",
-      "hashPath": "swashbuckle.aspnetcore.swagger.8.1.1.nupkg.sha512"
-    },
-    "Swashbuckle.AspNetCore.SwaggerGen/8.1.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-2EuPzXSNleOOzYvziERWRLnk1Oz9i0Z1PimaUFy1SasBqeV/rG+eMfwFAMtTaf4W6gvVOzRcUCNRHvpBIIzr+A==",
-      "path": "swashbuckle.aspnetcore.swaggergen/8.1.1",
-      "hashPath": "swashbuckle.aspnetcore.swaggergen.8.1.1.nupkg.sha512"
-    },
-    "Swashbuckle.AspNetCore.SwaggerUI/8.1.1": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-GDLX/MpK4oa2nYC1N/zN2UidQTtVKLPF6gkdEmGb0RITEwpJG9Gu8olKqPYnKqVeFn44JZoCS0M2LGRKXP8B/A==",
-      "path": "swashbuckle.aspnetcore.swaggerui/8.1.1",
-      "hashPath": "swashbuckle.aspnetcore.swaggerui.8.1.1.nupkg.sha512"
     },
     "System.CodeDom/6.0.0": {
       "type": "package",
