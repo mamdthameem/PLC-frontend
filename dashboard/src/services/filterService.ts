@@ -1,4 +1,4 @@
-import type { FilterRequest, FilterStatus, FilterResult } from '../types';
+import type { FilterRequest, FilterStatus, FilterResult, FilteredCycle, ShotsBreakdownEntry } from '../types';
 
 const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5200';
 
@@ -36,4 +36,20 @@ export async function fetchFilterResults(requestId: number): Promise<FilterResul
   });
   if (!res.ok) throw new Error(`Results fetch failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<FilterResult[]>;
+}
+
+export async function fetchFilterCycles(requestId: number): Promise<FilteredCycle[]> {
+  const res = await fetch(`${API_BASE}/api/filter/${requestId}/cycles`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Cycles fetch failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<FilteredCycle[]>;
+}
+
+export async function fetchFilterShots(requestId: number): Promise<ShotsBreakdownEntry[]> {
+  const res = await fetch(`${API_BASE}/api/filter/${requestId}/shots`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Filter shots fetch failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<ShotsBreakdownEntry[]>;
 }

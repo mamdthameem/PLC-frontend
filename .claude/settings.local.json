@@ -9,7 +9,9 @@
       "Bash(grep -v \"^bin$\\\\|^obj$\\\\|^PlcApi$\\\\|^dashboard$\\\\|^.git$\")",
       "Bash(rm -f PlcApi/Hubs/PlcHub.cs PlcApi/Services/PlcDataWorker.cs PlcApi/Controllers/MetricsController.cs PlcApi/Services/IMetricsService.cs PlcApi/Services/MetricsService.cs PlcApi/Services/TenantConnectionFactory.cs PlcApi/Middleware/TenantMiddleware.cs PlcApi/Services/PlcDataService.cs PlcApi/Services/IPlcDataService.cs PlcApi/Controllers/PlcController.cs PlcApi/Models/TenantContext.cs PlcApi/Services/DbConnectionState.cs PlcApi/Services/IDbConnectionState.cs PlcApi/Services/ConnectionStringHelper.cs PlcApi/Models/PlcValueDto.cs PlcApi/Models/MetricsDto.cs CLAUDE.md)",
       "Bash(rmdir PlcApi/Hubs PlcApi/Middleware)",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
     ]
   }
 }

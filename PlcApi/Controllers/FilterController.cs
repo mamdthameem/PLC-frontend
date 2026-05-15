@@ -18,17 +18,16 @@ public class FilterController : ControllerBase
     }
 
     /// <summary>
-    /// Submit a filter request. Inserts a row into calculation_requests and returns the id.
-    /// The backend picks it up within 5 seconds and sets status = 'done'.
-    /// Poll GET /api/filter/{id}/status every 2–3 seconds until done.
+    /// Submit a filter request. Supports filter_by = "time" | "cycle" | "metal".
+    /// Returns the request id. Poll GET /api/filter/{id}/status every 2–3 s until done.
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Submit([FromBody] FilterRequestInput input)
     {
         try
         {
-            if (input.FilterStart >= input.FilterEnd)
-                return BadRequest(new { error = "filter_start must be before filter_end" });
+            if (input.FilterStart >= input.FilterEnd && input.FilterBy == "time")
+                return BadRequest(new { error = "filter_start must be before filter_end for time-based filters" });
 
             var id = await _service.SubmitRequestAsync(input);
             return Ok(new { requestId = id });
@@ -42,8 +41,7 @@ public class FilterController : ControllerBase
 
     /// <summary>
     /// Poll the status of a calculation request.
-    /// Status lifecycle: pending → processing → done (or error).
-    /// Stop polling when status is 'done' or 'error'.
+    /// Status: pending → processing → done (or error). Stop polling on done or error.
     /// </summary>
     [HttpGet("{id}/status")]
     public async Task<IActionResult> GetStatus(int id)
@@ -64,8 +62,7 @@ public class FilterController : ControllerBase
     }
 
     /// <summary>
-    /// Read the results from plc_filtered_parameters once status is 'done'.
-    /// Returns one row per parameter for the requested time window.
+    /// Scalar results from plc_filtered_parameters once status is 'done'.
     /// </summary>
     [HttpGet("{id}/results")]
     public async Task<IActionResult> GetResults(int id)
@@ -79,6 +76,42 @@ public class FilterController : ControllerBase
         {
             _logger.LogError(ex, "Failed to fetch results for request {Id}", id);
             return StatusCode(500, new { error = "Failed to fetch results" });
+        }
+    }
+
+    /// <summary>
+    /// Per-cycle breakdown from plc_filtered_cycle_data once status is 'done'.
+    /// </summary>
+    [HttpGet("{id}/cycles")]
+    public async Task<IActionResult> GetCycles(int id)
+    {
+        try
+        {
+            var data = await _service.GetCycleDataAsync(id);
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch cycle data for request {Id}", id);
+            return StatusCode(500, new { error = "Failed to fetch cycle data" });
+        }
+    }
+
+    /// <summary>
+    /// Shots breakdown from plc_filtered_shots_breakdown once status is 'done'.
+    /// </summary>
+    [HttpGet("{id}/shots")]
+    public async Task<IActionResult> GetShots(int id)
+    {
+        try
+        {
+            var data = await _service.GetShotsBreakdownAsync(id);
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch shots breakdown for request {Id}", id);
+            return StatusCode(500, new { error = "Failed to fetch shots breakdown" });
         }
     }
 }

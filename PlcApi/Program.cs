@@ -34,6 +34,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Data services — thin DB proxy, no business logic
 builder.Services.AddScoped<ILifetimeService, LifetimeService>();
 builder.Services.AddScoped<IFilterService, FilterService>();
+builder.Services.AddScoped<IShotsBreakdownService, ShotsBreakdownService>();
+builder.Services.AddScoped<IAmpsService, AmpsService>();
+builder.Services.AddScoped<ISpareStatusService, SpareStatusService>();
+builder.Services.AddScoped<IMachineStatusService, MachineStatusService>();
+builder.Services.AddScoped<IHistoricalService, HistoricalService>();
+builder.Services.AddScoped<ICyclesService, CyclesService>();
 
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -102,9 +108,15 @@ app.MapGet("/", () => new
     {
         "POST /api/auth/login",
         "GET  /api/lifetime",
+        "GET  /api/shotsbreakdown",
+        "GET  /api/amps",
+        "GET  /api/sparestatus",
+        "GET  /api/sparestatus/alerts",
         "POST /api/filter",
         "GET  /api/filter/{id}/status",
-        "GET  /api/filter/{id}/results"
+        "GET  /api/filter/{id}/results",
+        "GET  /api/filter/{id}/cycles",
+        "GET  /api/filter/{id}/shots"
     }
 });
 
