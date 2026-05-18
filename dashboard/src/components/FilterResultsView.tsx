@@ -41,7 +41,6 @@ function CycleTable({ cycles }: { cycles: FilteredCycle[] }) {
             <TableCell>Metal 4</TableCell>
             <TableCell align="right">Production (kg)</TableCell>
             <TableCell align="right">Energy (kWh)</TableCell>
-            <TableCell align="right">Shots</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -56,7 +55,6 @@ function CycleTable({ cycles }: { cycles: FilteredCycle[] }) {
               <TableCell>{c.metal4Name ? `${c.metal4Name} ${c.metal4WeightKg?.toFixed(1)} kg` : '—'}</TableCell>
               <TableCell align="right">{c.productionKg.toFixed(2)}</TableCell>
               <TableCell align="right">{c.energyKwh.toFixed(3)}</TableCell>
-              <TableCell align="right">{c.shotsUsage.toFixed(1)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -127,7 +125,7 @@ export default function FilterResultsView({ requestId, filterStart, filterEnd, f
         </Typography>
       )}
 
-      {/* Scalar parameter grid */}
+      {/* Scalar parameter grid — production and last_refill are not shown in filtered view */}
       <Box
         sx={{
           display: 'grid',
@@ -136,7 +134,9 @@ export default function FilterResultsView({ requestId, filterStart, filterEnd, f
           mb: 3,
         }}
       >
-        {results.map(r => (
+        {results
+          .filter(r => r.parameterName !== 'production_qty_kg' && r.parameterName !== 'last_refill_epoch_sec')
+          .map(r => (
           <ExpandableMetricCard
             key={r.parameterName}
             parameterName={r.parameterName}

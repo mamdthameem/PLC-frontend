@@ -17,9 +17,9 @@ const POLL_INTERVAL_MS = 60_000;
 // Parameters shown in both sections — get graph dialogs in Section 1
 const GRAPHABLE: Record<string, { title: string; renderFn: (now: Date) => () => React.ReactNode }> = {
   machine_utility_pct: {
-    title: 'Hourly Utility Trend (last 24 h)',
+    title: 'Daily Utility (last 30 days)',
     renderFn: (now) => {
-      const start = new Date(now.getTime() - 24 * 3_600_000).toISOString();
+      const start = new Date(now.getTime() - 30 * 24 * 3_600_000).toISOString();
       const end   = now.toISOString();
       return () => <UtilityGraph windowStart={start} windowEnd={end} />;
     },

@@ -1,29 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Box, CircularProgress, Alert, Typography } from '@mui/material';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { fetchHistorical } from '../services/historicalService';
 import { fetchLatestCycle } from '../services/cyclesService';
-import type { HistoricalPoint } from '../types';
 
 interface Props {
+  impellerNumber: number;   // 1–10
   windowStart?: string;
   windowEnd?: string;
 }
 
-const IMP_NAMES = Array.from({ length: 10 }, (_, i) => `Current_imp_${i + 1}`);
 const COLORS = [
   '#1976d2','#d32f2f','#388e3c','#f57c00','#7b1fa2',
   '#0097a7','#c2185b','#5d4037','#455a64','#fbc02d',
 ];
 
-interface Row { label: string; [key: string]: string | number | undefined }
+interface Row { label: string; amps?: number }
 
-export default function AmpsGraph({ windowStart, windowEnd }: Props) {
-  const [rows, setRows]     = useState<Row[]>([]);
+export default function AmpsGraph({ impellerNumber, windowStart, windowEnd }: Props) {
+  const [rows, setRows]       = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+
+  const paramName = `Current_imp_${impellerNumber}`;
+  const color     = COLORS[(impellerNumber - 1) % COLORS.length];
 
   useEffect(() => {
     let active = true;
@@ -48,38 +50,20 @@ export default function AmpsGraph({ windowStart, windowEnd }: Props) {
           end   = new Date(cycle.blastEnd);
         }
 
-        const all: Record<string, HistoricalPoint[]> = {};
-        await Promise.all(IMP_NAMES.map(async n => {
-          all[n] = await fetchHistorical(n, start, end);
-        }));
+        const records = await fetchHistorical(paramName, start, end);
         if (!active) return;
 
-        // Merge all timestamps into a unified timeline
-        const tsSet = new Set<string>();
-        for (const recs of Object.values(all)) recs.forEach(r => tsSet.add(r.timestamp));
-        const sortedTs = Array.from(tsSet).sort();
-
-        // Build per-impeller lookup maps
-        const maps: Record<string, Map<string, number>> = {};
-        for (const name of IMP_NAMES) {
-          maps[name] = new Map();
-          for (const r of all[name]) {
-            const v = parseFloat(r.value);
-            if (isFinite(v)) maps[name].set(r.timestamp, v);
-          }
-        }
-
-        // Forward-fill: carry last known value
-        const lastVal: Record<string, number> = {};
-        const chartRows: Row[] = sortedTs.map(ts => {
-          const d = new Date(ts);
-          const label = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          const row: Row = { label };
-          for (const name of IMP_NAMES) {
-            if (maps[name].has(ts)) lastVal[name] = maps[name].get(ts)!;
-            if (lastVal[name] !== undefined) row[name] = lastVal[name];
-          }
-          return row;
+        // Forward-fill: carry last known value across all timestamps
+        let lastVal: number | undefined;
+        const chartRows: Row[] = records.map(r => {
+          const v = parseFloat(r.value);
+          if (isFinite(v)) lastVal = v;
+          return {
+            label: new Date(r.timestamp).toLocaleTimeString(undefined, {
+              hour: '2-digit', minute: '2-digit', second: '2-digit',
+            }),
+            amps: lastVal,
+          };
         });
 
         setRows(chartRows);
@@ -93,33 +77,29 @@ export default function AmpsGraph({ windowStart, windowEnd }: Props) {
 
     load();
     return () => { active = false; };
-  }, [windowStart, windowEnd]);
+  }, [impellerNumber, windowStart, windowEnd, paramName]);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>;
   if (error)   return <Alert severity="error">{error}</Alert>;
-  if (!rows.length) return <Typography color="text.secondary">No amps data for this period.</Typography>;
+  if (!rows.length) return <Typography color="text.secondary">No data for this impeller in the last cycle.</Typography>;
 
   return (
-    <Box sx={{ width: '100%', height: 360 }}>
+    <Box sx={{ width: '100%', height: 300 }}>
       <ResponsiveContainer>
         <LineChart data={rows} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="label" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
           <YAxis unit=" A" tick={{ fontSize: 11 }} />
-          <Tooltip formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(2)} A`]} />
-          <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-          {IMP_NAMES.map((name, i) => (
-            <Line
-              key={name}
-              type="monotone"
-              dataKey={name}
-              stroke={COLORS[i]}
-              dot={false}
-              strokeWidth={1.5}
-              name={`Imp ${i + 1}`}
-              connectNulls
-            />
-          ))}
+          <Tooltip formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(2)} A`, `Impeller ${impellerNumber}`]} />
+          <Line
+            type="monotone"
+            dataKey="amps"
+            stroke={color}
+            dot={false}
+            strokeWidth={2}
+            name={`Impeller ${impellerNumber}`}
+            connectNulls
+          />
         </LineChart>
       </ResponsiveContainer>
     </Box>

@@ -1,10 +1,13 @@
 import type { HistoricalPoint } from '../types';
 
 export interface UtilityBucket {
-  hour: Date;
+  time: Date;
   label: string;
   utilityPct: number;
 }
+
+export const HOUR_MS = 3_600_000;
+export const DAY_MS  = 86_400_000;
 
 function isBlastOn(val: string): boolean {
   return val === '1' || val.toLowerCase() === 'true';
@@ -14,8 +17,11 @@ function isMachineOn(val: string): boolean {
   return val !== '0';
 }
 
-function hourFloor(t: number): number {
+function bucketFloor(t: number, bucketMs: number): number {
   const d = new Date(t);
+  if (bucketMs >= DAY_MS) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  }
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()).getTime();
 }
 
@@ -24,19 +30,19 @@ function contributeInterval(
   endMs: number,
   blastOn: boolean,
   machineOn: boolean,
-  buckets: Map<number, { blastSec: number; machineSec: number }>
+  buckets: Map<number, { blastSec: number; machineSec: number }>,
+  bucketMs: number
 ) {
-  if (endMs <= startMs || !machineOn) {
+  if (!machineOn || endMs <= startMs) {
     if (machineOn && endMs > startMs) {
-      // machine on, blast off — still count machine time
       let t = startMs;
       while (t < endMs) {
-        const hTs    = hourFloor(t);
-        const segEnd = Math.min(endMs, hTs + 3_600_000);
+        const bTs    = bucketFloor(t, bucketMs);
+        const segEnd = Math.min(endMs, bTs + bucketMs);
         const sec    = (segEnd - t) / 1000;
-        const b      = buckets.get(hTs) ?? { blastSec: 0, machineSec: 0 };
+        const b      = buckets.get(bTs) ?? { blastSec: 0, machineSec: 0 };
         b.machineSec += sec;
-        buckets.set(hTs, b);
+        buckets.set(bTs, b);
         t = segEnd;
       }
     }
@@ -44,22 +50,23 @@ function contributeInterval(
   }
   let t = startMs;
   while (t < endMs) {
-    const hTs    = hourFloor(t);
-    const segEnd = Math.min(endMs, hTs + 3_600_000);
+    const bTs    = bucketFloor(t, bucketMs);
+    const segEnd = Math.min(endMs, bTs + bucketMs);
     const sec    = (segEnd - t) / 1000;
-    const b      = buckets.get(hTs) ?? { blastSec: 0, machineSec: 0 };
+    const b      = buckets.get(bTs) ?? { blastSec: 0, machineSec: 0 };
     b.machineSec += sec;
     if (blastOn) b.blastSec += sec;
-    buckets.set(hTs, b);
+    buckets.set(bTs, b);
     t = segEnd;
   }
 }
 
-export function computeHourlyUtility(
+export function computeUtility(
   blastRecords: HistoricalPoint[],
   machineRecords: HistoricalPoint[],
   periodStart: Date,
-  periodEnd: Date
+  periodEnd: Date,
+  bucketMs: number = HOUR_MS
 ): UtilityBucket[] {
   type Ev = { timeMs: number; type: 'blast' | 'machine'; value: string };
 
@@ -74,7 +81,6 @@ export function computeHourlyUtility(
   const startMs = periodStart.getTime();
   const endMs   = periodEnd.getTime();
 
-  // Use records before the window to determine initial state
   for (const ev of events) {
     if (ev.timeMs >= startMs) break;
     if (ev.type === 'blast')   blastOn   = isBlastOn(ev.value);
@@ -85,22 +91,32 @@ export function computeHourlyUtility(
   for (const ev of events) {
     if (ev.timeMs < startMs) continue;
     const evMs = Math.min(ev.timeMs, endMs);
-    contributeInterval(prevMs, evMs, blastOn, machineOn, buckets);
+    contributeInterval(prevMs, evMs, blastOn, machineOn, buckets, bucketMs);
     if (ev.timeMs > endMs) break;
     if (ev.type === 'blast')   blastOn   = isBlastOn(ev.value);
     else                       machineOn = isMachineOn(ev.value);
     prevMs = evMs;
   }
-  contributeInterval(prevMs, endMs, blastOn, machineOn, buckets);
+  contributeInterval(prevMs, endMs, blastOn, machineOn, buckets, bucketMs);
 
-  const multiDay = (endMs - startMs) > 86_400_000;
+  const isDaily = bucketMs >= DAY_MS;
   return Array.from(buckets.entries())
     .sort(([a], [b]) => a - b)
-    .map(([hTs, { blastSec, machineSec }]) => ({
-      hour:       new Date(hTs),
-      label:      new Date(hTs).toLocaleString(undefined, multiDay
-                    ? { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+    .map(([bTs, { blastSec, machineSec }]) => ({
+      time:       new Date(bTs),
+      label:      new Date(bTs).toLocaleDateString(undefined, isDaily
+                    ? { month: 'short', day: 'numeric' }
                     : { hour: '2-digit', minute: '2-digit' }),
       utilityPct: machineSec > 0 ? Math.min(100, (blastSec / machineSec) * 100) : 0,
     }));
+}
+
+/** @deprecated Use computeUtility */
+export function computeHourlyUtility(
+  blastRecords: HistoricalPoint[],
+  machineRecords: HistoricalPoint[],
+  periodStart: Date,
+  periodEnd: Date
+): UtilityBucket[] {
+  return computeUtility(blastRecords, machineRecords, periodStart, periodEnd, HOUR_MS);
 }

@@ -11,16 +11,21 @@ import type { AmpReading } from '../types';
 
 const POLL_MS = 1000;
 
-function impellerLabel(paramName: string): string {
+function impellerNumber(paramName: string): number {
   const m = paramName.match(/(\d+)$/);
-  return m ? `Impeller ${m[1]}` : paramName;
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function impellerLabel(paramName: string): string {
+  const n = impellerNumber(paramName);
+  return n ? `Impeller ${n}` : paramName;
 }
 
 export default function AmpsPanel() {
-  const [readings, setReadings] = useState<AmpReading[]>([]);
-  const [error, setError]       = useState<string | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [graphOpen, setGraphOpen] = useState(false);
+  const [readings, setReadings]   = useState<AmpReading[]>([]);
+  const [error, setError]         = useState<string | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [openImp, setOpenImp]     = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -44,29 +49,44 @@ export default function AmpsPanel() {
 
   return (
     <Box>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h6">Live Impeller Current (A)</Typography>
-        <Tooltip title="View amps history chart">
-          <IconButton size="small" onClick={() => setGraphOpen(true)}>
-            <BarChartIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
+      <Typography variant="h6" mb={2}>Live Impeller Current (A)</Typography>
 
       <Grid container spacing={2}>
         {readings.map(r => {
-          const amps = parseFloat(r.value);
+          const amps   = parseFloat(r.value);
           const display = isFinite(amps) ? `${amps.toFixed(2)} A` : r.value;
+          const impNum  = impellerNumber(r.parameterName);
           return (
             <Grid key={r.parameterName} size={{ xs: 6, sm: 4, md: 2 }}>
-              <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 2 }}>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>
-                  {impellerLabel(r.parameterName)}
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.1rem' }}>
+              <Paper
+                variant="outlined"
+                sx={{ p: 1.5, borderRadius: 2, position: 'relative' }}
+              >
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}
+                  >
+                    {impellerLabel(r.parameterName)}
+                  </Typography>
+                  <Tooltip title="View history">
+                    <IconButton
+                      size="small"
+                      sx={{ p: 0.25 }}
+                      onClick={() => setOpenImp(impNum)}
+                    >
+                      <BarChartIcon sx={{ fontSize: '0.9rem' }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.1rem', textAlign: 'center', mt: 0.5 }}
+                >
                   {display}
                 </Typography>
-                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
+                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', display: 'block', textAlign: 'center' }}>
                   {new Date(r.lastUpdated).toLocaleTimeString()}
                 </Typography>
               </Paper>
@@ -75,13 +95,13 @@ export default function AmpsPanel() {
         })}
       </Grid>
 
-      <Dialog open={graphOpen} onClose={() => setGraphOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={openImp !== null} onClose={() => setOpenImp(null)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          Amps per Impeller — Last Blast Cycle
-          <IconButton onClick={() => setGraphOpen(false)} size="small"><CloseIcon /></IconButton>
+          Impeller {openImp} — Current (A) · Last Blast Cycle
+          <IconButton onClick={() => setOpenImp(null)} size="small"><CloseIcon /></IconButton>
         </DialogTitle>
         <DialogContent>
-          {graphOpen && <AmpsGraph />}
+          {openImp !== null && <AmpsGraph impellerNumber={openImp} />}
         </DialogContent>
       </Dialog>
     </Box>

@@ -5,7 +5,7 @@ import {
   ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import { fetchHistorical } from '../services/historicalService';
-import { computeHourlyUtility } from '../utils/utilityCompute';
+import { computeUtility, DAY_MS, HOUR_MS } from '../utils/utilityCompute';
 
 interface Props {
   windowStart: string;
@@ -22,18 +22,19 @@ export default function UtilityGraph({ windowStart, windowEnd }: Props) {
     setLoading(true);
     setError(null);
 
-    const start = new Date(windowStart);
-    const end   = new Date(windowEnd);
-    // Extend lookback by 1 hour to capture initial state
-    const lookback = new Date(start.getTime() - 3_600_000);
+    const start    = new Date(windowStart);
+    const end      = new Date(windowEnd);
+    const windowMs = end.getTime() - start.getTime();
+    const bucketMs = windowMs > DAY_MS ? DAY_MS : HOUR_MS;
+    const lookback = new Date(start.getTime() - bucketMs);
 
     Promise.all([
-      fetchHistorical('Blast ON/OFF',    lookback, end),
-      fetchHistorical('Machine status',  lookback, end),
+      fetchHistorical('Blast ON/OFF',   lookback, end),
+      fetchHistorical('Machine status', lookback, end),
     ])
       .then(([blastRec, machineRec]) => {
         if (!active) return;
-        const buckets = computeHourlyUtility(blastRec, machineRec, start, end);
+        const buckets = computeUtility(blastRec, machineRec, start, end, bucketMs);
         setData(buckets.map(b => ({ label: b.label, utilityPct: parseFloat(b.utilityPct.toFixed(1)) })));
         setLoading(false);
       })
@@ -53,13 +54,20 @@ export default function UtilityGraph({ windowStart, windowEnd }: Props) {
   return (
     <Box sx={{ width: '100%', height: 320 }}>
       <ResponsiveContainer>
-        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
+        <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 32 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" interval="preserveStartEnd" />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 10 }}
+            angle={-40}
+            textAnchor="end"
+            interval="preserveStartEnd"
+            label={{ value: 'Date', position: 'insideBottom', offset: -20, fontSize: 11 }}
+          />
           <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
           <Tooltip formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(1)} %`, 'Utility']} />
           <ReferenceLine y={80} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: '80%', fontSize: 10 }} />
-          <Line type="monotone" dataKey="utilityPct" stroke="#1976d2" dot={false} strokeWidth={2} name="Utility %" />
+          <Line type="monotone" dataKey="utilityPct" stroke="#1976d2" dot={{ r: 3 }} strokeWidth={2} name="Utility %" />
         </LineChart>
       </ResponsiveContainer>
     </Box>

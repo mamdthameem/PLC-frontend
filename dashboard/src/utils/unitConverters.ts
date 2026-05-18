@@ -1,7 +1,9 @@
 export function secondsToHoursMin(sec: number): string {
   if (!isFinite(sec) || sec < 0) return '—';
-  const h = Math.floor(sec / 3600);
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
   if (h === 0) return `${m} min`;
   return `${h}h ${m}m`;
 }
@@ -76,7 +78,7 @@ export function formatParameterValue(name: string, raw: string): string {
     case 'cycle_count':
       return isFinite(n) ? Math.round(n).toLocaleString() : raw;
     case 'avg_shot_refill_time_sec':
-      return secondsToMinutes(n);
+      return secondsToHoursMin(n);
     case 'last_refill_epoch_sec':
       return epochToLocalDatetime(n);
     default:
